@@ -12,44 +12,17 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // --------------------------------------------------
-// CORS CONFIGURATION
+// CORS
 // --------------------------------------------------
-
-const FRONTEND_URL =
-  process.env.FRONTEND_URL ||
-  'https://zero-breach-eug8mrzfg-sushree-soumya-priyadarshini-s-projects.vercel.app';
-
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  FRONTEND_URL,
-].filter(Boolean);
+// Zero Breach is a public, no-login application.
+// We allow requests from any frontend origin.
+// This avoids problems with changing Vercel preview URLs.
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin
-      // (Postman, server-to-server requests, etc.)
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.warn(`[CORS] Blocked origin: ${origin}`);
-
-      return callback(new Error('Not allowed by CORS'));
-    },
-
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-    ],
-
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: false,
   })
 );
@@ -77,16 +50,25 @@ app.use(
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
-
   standardHeaders: true,
   legacyHeaders: false,
-
   message: {
     error: 'Too many requests. Please wait a moment and try again.',
   },
 });
 
 app.use('/api/', limiter);
+
+// --------------------------------------------------
+// ROOT ROUTE
+// --------------------------------------------------
+
+app.get('/', (req, res) => {
+  res.json({
+    service: 'Zero Breach Backend',
+    status: 'running',
+  });
+});
 
 // --------------------------------------------------
 // HEALTH CHECK
@@ -100,10 +82,14 @@ app.get('/api/health', (req, res) => {
 });
 
 // --------------------------------------------------
-// API ROUTES
+// INVESTIGATION ROUTES
 // --------------------------------------------------
 
 app.use('/api/investigate', investigateRoutes);
+
+// --------------------------------------------------
+// REPORT ROUTES
+// --------------------------------------------------
 
 app.use('/api/report', reportRoutes);
 
@@ -113,12 +99,6 @@ app.use('/api/report', reportRoutes);
 
 app.use((err, req, res, next) => {
   console.error('[unhandled error]', err);
-
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({
-      error: 'CORS policy blocked this request.',
-    });
-  }
 
   res.status(500).json({
     error: 'Something went wrong. Please try again.',
@@ -131,9 +111,4 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Zero Breach backend running on port ${PORT}`);
-  console.log('Allowed frontend origins:');
-
-  allowedOrigins.forEach((origin) => {
-    console.log(`- ${origin}`);
-  });
 });
