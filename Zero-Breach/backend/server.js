@@ -10,35 +10,130 @@ const reportRoutes = require('./routes/report');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+// --------------------------------------------------
+// CORS CONFIGURATION
+// --------------------------------------------------
+
+const FRONTEND_URL =
+  process.env.FRONTEND_URL ||
+  'https://zero-breach-eug8mrzfg-sushree-soumya-priyadarshini-s-projects.vercel.app';
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  FRONTEND_URL,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin
+      // (Postman, server-to-server requests, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn(`[CORS] Blocked origin: ${origin}`);
+
+      return callback(new Error('Not allowed by CORS'));
+    },
+
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+    ],
+
+    credentials: false,
+  })
+);
+
+// --------------------------------------------------
+// SECURITY
+// --------------------------------------------------
 
 app.use(helmet());
-app.use(cors({ origin: FRONTEND_URL }));
-app.use(express.json({ limit: '1mb' }));
 
-// Basic rate limiting to protect the free-tier API keys the app depends on
+// --------------------------------------------------
+// BODY PARSING
+// --------------------------------------------------
+
+app.use(
+  express.json({
+    limit: '1mb',
+  })
+);
+
+// --------------------------------------------------
+// RATE LIMITING
+// --------------------------------------------------
+
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
+
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests. Please wait a moment and try again.' },
+
+  message: {
+    error: 'Too many requests. Please wait a moment and try again.',
+  },
 });
+
 app.use('/api/', limiter);
 
+// --------------------------------------------------
+// HEALTH CHECK
+// --------------------------------------------------
+
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'zero-breach-backend' });
+  res.json({
+    status: 'ok',
+    service: 'zero-breach-backend',
+  });
 });
+
+// --------------------------------------------------
+// API ROUTES
+// --------------------------------------------------
 
 app.use('/api/investigate', investigateRoutes);
+
 app.use('/api/report', reportRoutes);
 
-// Fallback error handler - never leak raw errors to the client
+// --------------------------------------------------
+// ERROR HANDLER
+// --------------------------------------------------
+
 app.use((err, req, res, next) => {
   console.error('[unhandled error]', err);
-  res.status(500).json({ error: 'Something went wrong. Please try again.' });
+
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      error: 'CORS policy blocked this request.',
+    });
+  }
+
+  res.status(500).json({
+    error: 'Something went wrong. Please try again.',
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`Zero Breach backend running on http://localhost:${PORT}`);
+// --------------------------------------------------
+// START SERVER
+// --------------------------------------------------
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Zero Breach backend running on port ${PORT}`);
+  console.log('Allowed frontend origins:');
+
+  allowedOrigins.forEach((origin) => {
+    console.log(`- ${origin}`);
+  });
 });
