@@ -2,6 +2,8 @@
 
 ### OSINT Investigation Dashboard
 
+##LIVE DEMO:https://zero-breach-hawrr4ggm-sushree-soumya-priyadarshini-s-projects.vercel.app/
+
 Zero Breach is a lightweight OSINT (Open-Source Intelligence) investigation dashboard. Enter a **domain**, **IP address**, **username**, or upload a **file**, and it collects publicly available information, calculates an indicative risk score, and generates a downloadable PDF report — all from legitimate, public data sources.
 
 ![Zero Breach](frontend/public/logo.jpeg)
